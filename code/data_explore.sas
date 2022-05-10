@@ -7,7 +7,7 @@
 
 %include "C:\Users\rawatsa\OneDrive - University of Cincinnati\sas_utility_functions\util_load_macro_functions.sas";
 %util_load_macro_functions(C:\Users\rawatsa\OneDrive - University of Cincinnati\sas_utility_functions,subfolder=1);
-%util_fmt_std_graphics(debug=0);
+/*%util_fmt_std_graphics(debug=0);*/
 
 
 *----------------------------------------------------------------------------------------
@@ -109,3 +109,20 @@ run;
 
 
 
+%util_dat_pivot_longer(df = out.ohps_job_vars
+                   , out_df = ohps_job_vars
+                   , id_cols = date
+                   , pivot_cols = change_in_num_employed	jobs_created	jobs_destroyed
+                   , names_to = type
+                   , values_to = value
+                   );
+%util_plt_line(df = ohps_job_vars
+                , x = date
+                , y = value
+				, color = type 
+				, title = "Public Health Sector in Ohio: 2006Q1 to 2021Q2"
+				, subtitle = "Jobs Created, Destroyed and overall change in employment"
+				, y_scale = comma10.
+				, highlight_x_start = "31mar2020"d
+				, highlight_x_end = "30jun2021"d
+                );

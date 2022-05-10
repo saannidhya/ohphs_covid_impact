@@ -14,6 +14,7 @@
 %let out = &root.\data;
 
 libname extr "&extracts.";
+libname out "&out.";
 
 *----------------------------------------------------------------------------------------
 * loading Ohio Employment data (for NAICS code 62 only)	
@@ -21,7 +22,7 @@ libname extr "&extracts.";
 proc sql;
 	create table ohphs as
 		select  catx(strip(pad),strip(uin),strip(repunit)) as unique_id,
-				yyq(year,quarter) as date format = yyq6.,
+				intnx("qtr",yyq(year,quarter),0,"end") as date format = yyq6.,
 				*,
 				sum(m1,m2,m3) as num_employed, 
 				substr(strip(put(naics,best6.)),1,2) as naics_2dg, 
@@ -38,7 +39,6 @@ quit;
 *padding zeroes for year 2020;
 data ohphs;
 	set ohphs;
-/*		where strip(ein) = "310792046";*/
 		 pad = put(input(pad,best3.),z3.);
 		 RepUnit = put(input(RepUnit,best5.),z5.);
 		 uin = put(input(uin,best7.),z7.);
@@ -46,168 +46,110 @@ data ohphs;
 run;
 
 *----------------------------------------------------------------------------------------
-*	Summarizing using zipcode
+*	Job creation and Job destruction variables for NAICS code 62
 *----------------------------------------------------------------------------------------;
-proc freq data=ohphs;
-	tables zip;
-run; * has roughly 65,000 missing values;
-
-proc freq data=ohphs;
-	tables city;
-run; * has only 7 missing values. Need to clean the city string.;
-
-proc freq data=ohphs;
-	tables date;
-run; * has only 7 missing values. Need to clean the city string.;
-
-*----------------------------------------------------------------------------------------
-*	Job creation and Job destruction variables
-*----------------------------------------------------------------------------------------;
-proc sql noprint;
-	select distinct unique_id into :ids separated by " "
-	from ohphs (obs  = 10);
-quit;
-%let ids="%sysfunc(tranwrd(&ids.,%str( ),%str(%", %")))";
-%put &=ids;
-
-proc sort data=ohphs  out=ohphs_sort;* (where=(unique_id in (&ids.) ));*(where=(unique_id in ("000893500000000","001863000000001","001863000000002","001863000000003","001863000000004","001863000000011") ));
-	by unique_id year quarter;
-run;
-	
-data ohphs_sort2;* (where= (year(date) > 2016));
-	set ohphs_sort (keep=unique_id date  num_employed);
-	by unique_id;
-
-	* creating flags for when a store was first created and last seen;
-	if first.unique_id then new_flag = 1; else new_flag = 0;
-	if last.unique_id then destroyed_flag = 1; else destroyed_flag = 0;
-
-	* difference in workers for each firm;
-	diff = num_employed - lag(num_employed); if new_flag = 1 then diff = .; 
-
-	date2 = intnx("qtr",date,0,'end'); format date2 date9.;
-	date =  intnx("qtr",date,0,'b');
-
-	* jobs created and jobs destryoed;
-	if diff >=0 then jobs_created = diff; else jobs_created = 0;
-	if diff < 0 then jobs_destroyed = diff; 
-	if jobs_destroyed = . then jobs_destroyed = 0;
-
-	* whenever a new firm is found, it should add jobs;
-	if new_flag = 1 and date2 ^= "31mar2006"d  then jobs_created = num_employed;
-
-	* creating a new observation whenever destroyed_flag = 1 since these jobs should be removed from next quarter ;
-	if destroyed_flag = 1 and date2 ^= "30jun2021"d then do; 
-		destroyed_flag = 0;
-		output;
-		destroyed_flag = 1;
-		date =  intnx("qtr",date,1,'b');
-		jobs_destroyed = -num_employed;
-		jobs_created = 0;
-		num_employed = 0;
-		diff = 0;
-		output;
-	end;
-	else output;
-
-run;
-
-%util_dat_aggregate(
-                   df       = ohphs_sort2
-                 , out_df   = ohphs_sort3 
-                 , group    = date
-                 , sum      = num_employed jobs_created jobs_destroyed
-);
-data ohphs_sort3;
-	set ohphs_sort3;
-		jobs_created_and_destroyed = jobs_created +	jobs_destroyed;
-		change_employment = num_employed - lag(num_employed);
-		diff = jobs_created_and_destroyed - change_employment;
-run;
-
-
-
-*----------------------------------------------------------------------------------------;
-* creating flags for when a store was first created i.e. jobs created;
-data ohphs_sort2;* (where= (year(date) > 2016));
-	set ohphs_sort (keep=unique_id date  num_employed  );
-	by unique_id;
-
-	date_chk = lag(date); format date_chk yyq6.; 
-	if date = intnx("qtr",date_chk,1,'b') then new_flag = 0; else new_flag = 1;
-
-run;
-proc sort data=ohphs_sort2;
-	by unique_id descending date;
-run;
-
-* creating flags for when a store was last seen i.e. jobs destroyed. Code takes care of firms which stop filing for a few quarters in the middle and then start re-filing by treating
-it as exit and then re-entry into job market
-;
-data ohphs_sort3 (drop= date_chk date_chk_lead);
-	set ohphs_sort2;
-	date_chk_lead = lag(date); format date_chk_lead yyq6.; 
-	if date = intnx("qtr",date_chk_lead,-1,'b') then destroyed_flag = 0; else destroyed_flag = 1;
-
-run;
-proc sort data=ohphs_sort3;
+* sorting dataset by unique_id and date;
+proc sort data=ohphs  out=ohphs_sort;
 	by unique_id date;
 run;
 
-/*data ohphs_sort33;*/
-/*set ohphs_sort3; where new_flag = 1 and destroyed_flag = 1;*/
-/*run;*/
-
-data ohphs_sort4;
-	set ohphs_sort3 ;
-	by unique_id;
-
-	* difference in workers for each firm;
-	diff = num_employed - lag(num_employed); if new_flag = 1 then diff = .; 
-
-	date =  intnx("qtr",date,0,'end');
-
-	* jobs created and jobs destryoed;
-	if diff >=0 then jobs_created = diff; else jobs_created = 0;
-	if diff < 0 then jobs_destroyed = diff; 
-	if jobs_destroyed = . then jobs_destroyed = 0;
-
-	* whenever a new firm is found, it should add jobs;
-	if new_flag = 1 and date ^= "31mar2006"d  then jobs_created = num_employed;
-
-	* creating a new observation whenever destroyed_flag = 1 since these jobs should be removed from next quarter ;
-	if destroyed_flag = 1 and date ^= "30jun2021"d then do; 
-		destroyed_flag = 0;
-		output;
-		destroyed_flag = 1;
-		new_flag = 0;
-		date =  intnx("qtr",date,1,'end');
-		jobs_destroyed = -num_employed;
-		jobs_created = 0;
-		num_employed = 0;
-		diff = 0;
-		output;
-	end;
-	else output;
-
-run;
-
+* aggregating by date to cross-check jobs created and destroyed numbers later;	
 %util_dat_aggregate(
-                   df       = ohphs_sort4
-                 , out_df   = ohphs_sort5 
+                   df       = ohphs_sort
+                 , out_df   = ohphs_sort3 
                  , group    = date
-                 , sum      = num_employed jobs_created jobs_destroyed
+                 , sum      = num_employed 
 );
-data ohphs_sort5;
-	set ohphs_sort5;
-		jobs_created_and_destroyed = jobs_created +	jobs_destroyed;
-		change_employment = num_employed - lag(num_employed);
-		diff = jobs_created_and_destroyed - change_employment;
-run;
+
+* storing all distinct dates in a list and requisite date column names;
+proc sql noprint;
+	select distinct date into :dts separated by " "
+		from ohphs_sort;
+quit;
+%let dates_dts =date_%sysfunc(tranwrd(&dts.,%str( ),%str(_df date_)))_df;
+
+* transposing to get unique_id as rows and quarters as columns. This deals with firms which originate and vanish in between the periods.;
+%util_dat_pivot_wider(df = ohphs_sort (keep = unique_id date num_employed) 
+                      , out_df = ohphs_sorted
+                      , names_from = date
+                      , values_from = num_employed
+					  , names_prefix = date_
+					  , values_fill = 0
+                      );
+
+* macro that creates dataset containing jobs created and destroyed variables;					  
+%macro make_vars();
+	data ohphs_sorted2;
+		set ohphs_sorted;
+			date_%scan(&dts.,1,' ')_df = 0;
+		%do i = 2 %to %sysfunc(countw(&dts.));
+			%let dt1 = %scan(&dts.,%eval(&i.-1),' ');
+			%let dt2 = %scan(&dts.,&i.,' ');
+			date_&dt2._df = date_&dt2. - date_&dt1.; 
+		%end;
+		keep unique_id _name_ &dates_dts.;
+	run;
+
+	data ohphs_jobs_created;
+		set ohphs_sorted2;
+		%do j = 1 %to %sysfunc(countw(&dates_dts.));
+			%let dt = %scan(&dates_dts.,&j.,' ');
+			if &dt.>= 0 then &dt. = &dt.;
+			else &dt. = 0;
+		%end;
+	run;
+
+	data ohphs_jobs_destroyed;
+		set ohphs_sorted2;
+		%do j = 1 %to %sysfunc(countw(&dates_dts.));
+			%let dt = %scan(&dates_dts.,&j.,' ');
+			if &dt. < 0 then &dt. = &dt.;
+			else &dt. = 0;
+		%end;
+	run;
+
+	proc summary data=ohphs_jobs_created;
+		var &dates_dts.;
+		output out=ohphs_jobs_created_agg (drop = _type_ _freq_) sum = ;
+	run;
+	proc summary data=ohphs_jobs_destroyed;
+		var &dates_dts.;
+		output out=ohphs_jobs_destroyed_agg (drop = _type_ _freq_) sum = ;
+	run;
+	%util_dat_pivot_longer(df = ohphs_jobs_created_agg
+	                      , out_df = ohphs_jobs_created_agg_t
+						  , names_to = date
+						  , values_to = jobs_created
+	                      );
+	%util_dat_pivot_longer(df = ohphs_jobs_destroyed_agg
+	                      , out_df = ohphs_jobs_destroyed_t
+						  , names_to = date
+						  , values_to = jobs_destroyed
+	                      );
+	proc sql;
+		create table out.ohps_job_vars (drop = date_a date_b) as 
+			select compress(date_a,"date_f") as date, (jobs_created + jobs_destroyed) as  change_in_num_employed, *
+				from ohphs_jobs_created_agg_t (rename = (date = date_a)) as a, ohphs_jobs_destroyed_t (rename = (date = date_b)) as b
+					where a.date_a = b.date_b;
+	quit;
+			
+%mend make_vars;
+%make_vars();
 
 
-data ohphs_sort6;
-	set ohphs_sort4;
-/*		where intnx("qtr",date,0,"end") ^= "31dec2006"d and destroyed_flag = 1;*/
-	where new_flag = 1 and destroyed_flag = 1;
+*----------------------------------------------------------------------------------------
+*	Job creation and Job destruction variables for NAICS subcodes
+*----------------------------------------------------------------------------------------;
+* sorting dataset by unique_id and date;
+proc sort data=ohphs  out=ohphs_sort;
+	by unique_id date;
 run;
+
+* aggregating by date to cross-check jobs created and destroyed numbers later;	
+%util_dat_aggregate(
+                   df       = ohphs_sort
+                 , out_df   = ohphs_sort3 
+                 , group    = naics_3dg_subcategory date
+                 , sum      = num_employed 
+);
+
