@@ -17,22 +17,12 @@ libname extr "&extracts.";
 libname out "&out.";
 
 *----------------------------------------------------------------------------------------
-*	Aggregate  Employment: Plots
+*	Employment: Plots
 *----------------------------------------------------------------------------------------;
+ods graphics on;
+ods listing gpath="&root.\data\data_explore";
+ods graphics / imagename="ts_ohphs_empl_all_mth" imagefmt=png 	reset;
 *num employed;
-%util_plt_line(df = out.ohphs_empl_all_qtr
-                , x = date
-                , y = num_employed
-                , x_lab = "Date"
-                , y_lab = "Number of Employed persons"
-                , title = "Ohio Public Health Sector: Employment level"
-                , subtitle = "2006 - 2021"
-                , highlight_x_start = "30sep2007"D "31dec2019"d 
-                , highlight_x_end   = "30jun2009"D "30jun2021"d
-                , legend_lab = ""
-				, highlight_x_lab = "Recession period" 
-                , y_scale = comma20.
-);
 %util_plt_line(df = out.ohphs_empl_all_mth
                 , x = date
                 , y = num_employed
@@ -47,79 +37,98 @@ libname out "&out.";
                 , y_scale = comma20.
 );
 
+ods graphics off;
 
 *----------------------------------------------------------------------------------------
-*	Breakout Employment: Plots
+*	Breakout Employment by sub-categories: Plots
 *----------------------------------------------------------------------------------------;
-*num employed;
-%util_plt_line(df = out.ohphs_empl_by_subcat_mth
+*num employed by NAICS sub-category;
+data ohphs_empl_by_subcat_mth;
+	set out.ohphs_empl_by_subcat_mth;
+		if naics_3dg = "621" then sub_category = "Ambulatory Health Care Services";
+		if naics_3dg = "622" then sub_category = "Hospitals";
+		if naics_3dg = "623" then sub_category = "Nursing and Residential Care Facilities";
+		if naics_3dg = "624" then sub_category = "Social Assistance";
+run;
+%util_plt_line(df = ohphs_empl_by_subcat_mth
                 , x = date
                 , y = num_employed
-				, color = naics_3dg
+				, color = sub_category
                 , x_lab = "Date"
                 , y_lab = "Number of Employed persons"
                 , title = "Ohio Public Health Sector: Employment level"
                 , subtitle = "2006 - 2021"
-                , highlight_x_start = "30sep2007"D "31dec2019"d 
-                , highlight_x_end   = "30jun2009"D "30jun2021"d
+                , highlight_x_start = "28feb2020"d 
+                , highlight_x_end   = "30jun2021"d
                 , legend_lab = ""
 				, highlight_x_lab = "Recession period" 
                 , y_scale = comma20.
 				, color_palette = cxe41a1c cx377eb8 cx4daf4a cx984ea3
 );
-%util_plt_line(df = out.ohphs_empl_by_subcat_qtr
+%util_plt_line(df = ohphs_empl_by_subcat_mth (where=(year(date) > 2018))
                 , x = date
                 , y = num_employed
-				, color = naics_3dg
+				, color = sub_category
                 , x_lab = "Date"
                 , y_lab = "Number of Employed persons"
                 , title = "Ohio Public Health Sector: Employment level"
                 , subtitle = "2006 - 2021"
-                , highlight_x_start = "30sep2007"D "31dec2019"d 
-                , highlight_x_end   = "30jun2009"D "30jun2021"d
+                , highlight_x_start = "31mar2020"d 
+                , highlight_x_end   = "30jun2021"d
                 , legend_lab = ""
 				, highlight_x_lab = "Recession period" 
                 , y_scale = comma20.
 				, color_palette = cxe41a1c cx377eb8 cx4daf4a cx984ea3
 );
+ods pdf close;
 
 *----------------------------------------------------------------------------------------
 *	Aggregate: OHPHS vs Non-OHPHS
 *----------------------------------------------------------------------------------------;
-data ohphs_empl_all_qtr;
-	set out.ohphs_empl_all_qtr;
+*monthly;
+data ohphs_empl_all_mth;
+	set out.ohphs_empl_all_mth;
 run;
-data non_ohphs_empl_all_qtr;
-	set out.non_ohphs_empl_all_qtr;
+data non_ohphs_empl_all_mth;
+	set out.non_ohphs_empl_all_mth;
 run;
-data empl_all_qtr;
-	merge ohphs_empl_all_qtr (rename= (num_employed = ohphs_num_employed)) non_ohphs_empl_all_qtr (rename= (num_employed = non_ohphs_num_employed));
+data empl_all_mth;
+	merge ohphs_empl_all_mth (rename= (num_employed = ohphs_num_employed)) non_ohphs_empl_all_mth (rename= (num_employed = non_ohphs_num_employed));
 	by date;
+		ohphs_num_employed_y = ohphs_num_employed/lag12(ohphs_num_employed) - 1;
+		non_ohphs_num_employed_y = non_ohphs_num_employed/lag12(non_ohphs_num_employed) - 1;
 run;
-%util_dat_pivot_longer(df = empl_all_qtr
-                   , out_df = empl_all_qtr_t
+%util_dat_pivot_longer(df = empl_all_mth (keep = date ohphs_num_employed non_ohphs_num_employed)
+                   , out_df = empl_all_mth_t
                    , id_cols = date
-                   , pivot_cols = ohphs_num_employed	non_ohphs_num_employed
+                   , pivot_cols = ohphs_num_employed non_ohphs_num_employed
                    , names_to = type
                    , values_to = value
                    );
-data ;
-	set ;
-run;
-%util_plt_line(df = empl_all_qtr_t
+%util_dat_pivot_longer(df = empl_all_mth (keep = date ohphs_num_employed_y	non_ohphs_num_employed_y)
+                   , out_df = empl_all_mth_t_y
+                   , id_cols = date
+                   , pivot_cols = ohphs_num_employed_y	non_ohphs_num_employed_y
+                   , names_to = type
+                   , values_to = value
+                   );
+%util_plt_line(df = empl_all_mth_t_y
                 , x = date
                 , y = value
 				, color = type 
-				, title = "Public Health Sector vs Other Sectors in Ohio: 2006Q1 to 2021Q2"
-				, y_scale = comma10.
-				, highlight_x_start = "31mar2020"d
-				, highlight_x_end = "30jun2021"d
+				, title = "Public Health Sector vs Non-Public Health Sectors in Ohio"
+				, subtitle = "% Change from a Year Ago: 2007Q1 to 2021Q2"
+				, y_lab = "Annual % Change in Employed Workers"
+				, y_scale = percent6.1
+				, highlight_x_start = "30sep2007"d "31mar2020"d
+				, highlight_x_end = "31dec2009"d "30jun2021"d
+				, legend_lab = "growth"
                 );
-%util_plt_line(df = empl_all_qtr
+%util_plt_line(df = empl_all_mth
                 , x = date
                 , y = ohphs_num_employed
 				, y2 = non_ohphs_num_employed
-				, title = "Public Health Sector vs Other Sectors in Ohio: 2006Q1 to 2021Q2"
+				, title = "Public Health Sector vs Non-Public Sectors in Ohio: 2006Q1 to 2021Q2"
 				, y_scale = comma10.
 				, y2_scale = comma10.
 				, y_lab = "Public Health workers"
@@ -127,26 +136,121 @@ run;
 				, highlight_x_start = "30sep2007"d "31mar2020"d
 				, highlight_x_end = "30sep2009"d "30jun2021"d
                 );
+*----------------------------------------------------------------------------------------
+*	Employment by region: Plots
+*----------------------------------------------------------------------------------------;
+data region_mth;
+	merge out.ohphs_empl_by_county_mth work.county_mapping_tbl;
+		by county_name;
+run;
+%util_dat_aggregate(
+                   df       = region_mth (keep = county_name	date	num_employed region)
+                 , out_df   = region_mth_agg
+                 , group    = region date
+                 , sum      = num_employed 
+);
+data region_mth_agg2;
+	set region_mth_agg;
+		by region;
+		num_employed_y = num_employed/lag12(num_employed) - 1;
+		if strip(region) = "urban" and year(date) = 2006 then num_employed_y = .;
+run;
+%util_plt_line(df = region_mth_agg2
+                , x = date
+                , y = num_employed_y
+				, color = region 
+/*				, title = "Public Health Sector in Ohio: 2006Q1 to 2021Q2"*/
+/*				, subtitle = "Jobs Created, Destroyed and overall change in employment"*/
+				, y_scale = percent6.1
+				, highlight_x_start = "31mar2020"d
+				, highlight_x_end = "30jun2021"d
+				, y_lab = "Healthcare Workers (% Change from a year ago)"
+                );
 
 
 *----------------------------------------------------------------------------------------
-*	Aggregate: Job creation and destruction
+*	Job creation and destruction
 *----------------------------------------------------------------------------------------;
-
-%util_dat_pivot_longer(df = out.ohphs_job_vars_all_qtr
-                   , out_df = ohphs_job_vars_all_qtr
+data ohphs_job_vars_all_mth (drop= date rename= (date2 = date));
+	set out.ohphs_job_vars_all_mth;
+	date2 = input(strip(date),date9.) ; format date2 date9.;
+run;
+data ohphs_job_vars_mth;
+	merge out.ohphs_empl_all_mth ohphs_job_vars_all_mth ;
+		by date;
+			if _n_ ^= 1 then do;
+				job_creation_rate = jobs_created/num_employed;
+				job_destruction_rate = jobs_destroyed/num_employed;
+			end;
+run;
+%util_dat_pivot_longer(df = ohphs_job_vars_mth
+                   , out_df = ohphs_job_vars_mth_t
                    , id_cols = date
-                   , pivot_cols = change_in_num_employed	jobs_created	jobs_destroyed
+                   , pivot_cols = job_creation_rate	job_destruction_rate
                    , names_to = type
                    , values_to = value
                    );
-%util_plt_line(df = ohphs_job_vars_all_qtr
+%util_plt_line(df = ohphs_job_vars_mth_t
                 , x = date
                 , y = value
 				, color = type 
 				, title = "Public Health Sector in Ohio: 2006Q1 to 2021Q2"
-				, subtitle = "Jobs Created, Destroyed and overall change in employment"
+				, subtitle = "Jobs Created, Destroyed Rate"
 				, y_scale = comma10.
 				, highlight_x_start = "31mar2020"d
 				, highlight_x_end = "30jun2021"d
                 );
+* by subcategory;
+data ohphs_job_vars_subcat (drop= date rename= (date2 = date));
+	set out.ohphs_job_vars_621_qtr out.ohphs_job_vars_622_qtr out.ohphs_job_vars_623_qtr out.ohphs_job_vars_624_qtr;		
+	by category;
+	date2 = intnx("qtr",input(strip(date),yyq6.),0,"end") ; format date2 date9.;
+run;
+data ohphs_empl_by_subcat_qtr (drop=naics_3dg);
+	set out.ohphs_empl_by_subcat_qtr;
+	length category $3;
+	category = naics_3dg;
+run;
+data job_vars_by_cat (drop=category);
+	merge ohphs_empl_by_subcat_qtr ohphs_job_vars_subcat;
+		by category date;
+				job_creation_rate = jobs_created/num_employed;
+				job_destruction_rate = jobs_destroyed/num_employed;
+				net_employment_rate = job_creation_rate + job_destruction_rate;
+		if category = "621" then sub_category = "Ambulatory Health Care Services";
+		if category = "622" then sub_category = "Hospitals";
+		if category = "623" then sub_category = "Nursing and Residential Care Facilities";
+		if category = "624" then sub_category = "Social Assistance";
+run;
+%util_plt_line(df = job_vars_by_cat (where=(year(date) > 2018))
+                , x = date
+                , y = job_creation_rate
+				, color = sub_category 
+				, title = "Public Health Sector in Ohio: 2006Q1 to 2021Q2"
+				, subtitle = "Jobs Creation Rate"
+				, y_scale = percent6.1
+				, highlight_x_start = "31mar2020"d
+				, highlight_x_end = "30jun2021"d
+                );
+%util_plt_line(df = job_vars_by_cat (where=(year(date) > 2018))
+                , x = date
+                , y = job_destruction_rate
+				, color = sub_category 
+				, title = "Public Health Sector in Ohio: 2006Q1 to 2021Q2"
+				, subtitle = "Jobs Destruction Rate"
+				, y_scale = percent6.1
+				, highlight_x_start = "31mar2020"d
+				, highlight_x_end = "30jun2021"d
+                );
+%util_plt_line(df = job_vars_by_cat (where=(year(date) > 2018))
+                , x = date
+                , y = net_employment_rate
+				, color = sub_category 
+				, title = "Public Health Sector in Ohio: 2006Q1 to 2021Q2"
+				, subtitle = "Net Employment Rate"
+				, y_scale = percent6.1
+				, highlight_x_start = "31mar2020"d
+				, highlight_x_end = "30jun2021"d
+                );
+
+
