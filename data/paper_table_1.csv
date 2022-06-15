@@ -1,0 +1,11 @@
+category,Period,Job Creation Rate,Job Destruction Rate,Job Reallocation Rate,Net Employment Rate,Excess Job Reallocation Rate
+Ambulatory Health Care Services,Pre-COVID,3.26% ,3.11% ,6.38% ,0.15% ,5.91% 
+Ambulatory Health Care Services,Post-COVID,3.88% ,4.15% ,8.02% ,(0.27%),5.62% 
+Hospitals,Pre-COVID,1.09% ,1.01% ,2.11% ,0.08% ,1.83% 
+Hospitals,Post-COVID,1.13% ,1.19% ,2.33% ,(0.06%),1.62% 
+Nursing and Residential Care,Pre-COVID,2.53% ,2.52% ,5.05% ,0.01% ,4.70% 
+Nursing and Residential Care,Post-COVID,2.84% ,3.68% ,6.52% ,(0.83%),5.68% 
+Social Assistance,Pre-COVID,3.45% ,3.17% ,6.62% ,0.28% ,6.07% 
+Social Assistance,Post-COVID,4.19% ,4.84% ,9.03% ,(0.64%),6.20% 
+Public Health Sector,Pre-COVID,2.39% ,2.27% ,4.66% ,0.12% ,4.36% 
+Public Health Sector,Post-COVID,2.77% ,3.10% ,5.87% ,(0.33%),4.53% 

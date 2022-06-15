@@ -6,6 +6,7 @@
 			 8 May 22   SR Started coding Job creation and Job destroyed variables
 			10 May 22   SR Added breakout by NAICS subcategories and Ohio counties
 			13 May 22   SR Calculated non-ohphs numbers (qtrly and monthly)
+			15 Jun 22   SR Reviewed the code for writing equations in article
 \*=================================================================================================*/
 
 %let start_time = %sysfunc(time());
