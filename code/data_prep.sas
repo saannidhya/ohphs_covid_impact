@@ -7,6 +7,13 @@
 			10 May 22   SR Added breakout by NAICS subcategories and Ohio counties
 			13 May 22   SR Calculated non-ohphs numbers (qtrly and monthly)
 			15 Jun 22   SR Reviewed the code for writing equations in article
+			7  Jul 22   SR Added some comments
+|Inputs	   : county_mapping_tbl.xlsx, masterfile_2006q1_2021q2.sas7bdat
+|Outputs   : out.ohphs_job_vars_by_county_&type. , 
+			 out.ohphs_empl_all_qtr, out.ohphs_empl_by_subcat_qtr, out.ohphs_empl_by_county_qtr, 
+			 out.ohphs_empl_all_mth, out.ohphs_empl_by_subcat_mth, out.ohphs_empl_by_county_mth, 
+			 out.non_ohphs_empl_all_qtr, out.non_ohphs_empl_by_subcat_qtr, out.non_ohphs_empl_by_county_qtr, out.non_ohphs_empl_by_region_qtr, 
+			 out.non_ohphs_empl_all_mth, out.non_ohphs_empl_by_subcat_mth, out.non_ohphs_empl_by_county_mth, out.non_ohphs_empl_by_region_mth
 \*=================================================================================================*/
 
 %let start_time = %sysfunc(time());

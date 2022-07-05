@@ -3,6 +3,8 @@
 |Purpose   : Data tables for measuring covid impact on Ohio's public health sector
 |History   : Date 		By Description
 			 13 Jun 22  SR Created average job creation, destruction, reallocation rates pre and post COVID
+|Inputs    : out.ohphs_job_rates_by_cat, out.ohphs_job_rates_all_mth
+|Outputs   : out.ohphs_job_rates_measure
 \*=================================================================================================*/
 
 
@@ -11,7 +13,7 @@
 
 %let extracts = C:\QCEW Data - Ohio\ES202\extracts;
 %let root = C:\Users\rawatsa\OneDrive - University of Cincinnati\SASprojects\ohphs_covid_impact;
-%let out = &root.\data\data_prep;
+%let out = &root.\data;
 
 libname extr "&extracts.";
 libname out "&out.";
@@ -26,24 +28,24 @@ data ohphs_job_rates_all_mth;
 run;
 
 proc sql;
-	create table ohphs_job_rates_covid as
+	create table ohphs_job_rates_measure as
 		select  category, covid_flag, 
 				mean(job_creation_rate) as job_creation_rate format=percent6.1,	
 				mean(job_destruction_rate) as job_destruction_rate format=percent6.1,	
 				mean(job_reallocation_rate) as job_reallocation_rate format=percent6.1,	
-				mean(net_employment_rate) as net_employment_rate format=percent6.1,	
-				mean(excess_job_reallocation) as excess_job_reallocation format=percent6.1
+				mean(net_employment_rate) as net_employment_rate format=percent6.1
 			from ohphs_job_rates_all_mth (where=(date ^= "31jan2006"d))
 				group by category, covid_flag;
 quit;
 
-*----------------------------------------------------------------------------------------
-*	Compute Job reallocations due to between-sector movements
-*----------------------------------------------------------------------------------------;
-
-
-*----------------------------------------------------------------------------------------
-*	Compute sum of excess Job reallocations within each sector
-*----------------------------------------------------------------------------------------;
+data out.ohphs_job_rates_measure;
+	set ohphs_job_rates_measure;
+			creation_diff_in_pp = (job_creation_rate - lag(job_creation_rate))*100;
+			destruction_diff_in_pp = (job_destruction_rate - lag(job_destruction_rate))*100;
+		if first.category then creation_diff_in_pp = . ; if first.category then destruction_diff_in_pp = . ;
+			jobs_lost_measure = destruction_diff_in_pp - creation_diff_in_pp;
+		output;
+		by category;
+run;
 
 

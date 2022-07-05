@@ -10,11 +10,9 @@
 %util_load_macro_functions(C:\Users\rawatsa\OneDrive - University of Cincinnati\sas_utility_functions,subfolder=1);
 %util_fmt_std_graphics(debug=0);
 
-%let extracts = C:\QCEW Data - Ohio\ES202\extracts;
 %let root = C:\Users\rawatsa\OneDrive - University of Cincinnati\SASprojects\ohphs_covid_impact;
 %let out = &root.\data;
 
-libname extr "&extracts.";
 libname out "&out.";
 
 *----------------------------------------------------------------------------------------
@@ -53,20 +51,20 @@ run;
                    );
 data ohphs_empl_t2;
 	set ohphs_empl_t;
-		if strip(type) = "num_employed_yoy" then source = "OJFS";
+		if strip(type) = "num_employed_yoy" then source = "ODJFS";
 		if strip(type) = "employment_yoy" then source = "BLS";
 run;
-%util_plt_line(df = ohphs_empl_t2 
+%util_plt_line(df = ohphs_empl_t2 (where =(year(date) > 2007)) /*starting 2007 due to different base*/
                 , x = date
                 , y = growth
 				, color = source
                 , x_lab = "Date"
                 , y_lab = "annual growth"
-                , title = "Healthcare Employment growth: Benchmarking plot"
-                , subtitle = "OJFS unit-level data vs BLS aggregate data"
+                , title = "Healthcare Sector in Ohio: Employment growth"
+                , subtitle = "Benchmarking: ODJFS unit-level data vs BLS aggregate data"
                 , legend_hide = 0
                 , y_scale = percent6.1
 				, highlight_x_start = "30sep2007"d "31mar2020"d
 				, highlight_x_end = "31dec2009"d "30jun2021"d
-                , highlight_x_lab = "Super Important Period"
+                , highlight_x_lab = "Recession Period"
                 );

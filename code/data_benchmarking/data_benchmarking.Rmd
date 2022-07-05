@@ -1,0 +1,160 @@
+---
+title: "Benchmarking Analysis for COVID-19 Impact on jobs in Ohio's Healthcare Sector"
+author: "Saannidhya Rawat"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output:
+  Rbearcat::UC_pdf_document: default
+  Rbearcat::UC_html_document: default
+bibliography: "references.bib"
+biblio-style: "apalike"
+params: 
+  data_provider: "Ohio Department of Job and Family Services"
+  data_provider_abbr : "ODJFS"
+link-citations: true
+mainfont: Times New Roman
+fontsize: 12pt
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+options(kableExtra.latex.load_packages = FALSE)
+
+# load packages
+library(Rbearcat)
+library(tidyverse)
+library(lubridate)
+library(haven)
+library(stringr)
+library(here)
+library(knitr)
+library(janitor)
+library(scales)
+library(viridis)
+library(RColorBrewer)
+library(kableExtra)
+library(flextable)
+
+
+# set default Rmd options
+Rbearcat::bcat_setup_rmd()
+
+# set default UC geoms
+Rbearcat::set_UC_geoms()
+
+# output type
+doc_type <- knitr::opts_knit$get('rmarkdown.pandoc.to')
+
+```
+
+```{r import, out.width="50%"}
+root <- "C:/Users/rawatsa/OneDrive - University of Cincinnati/SASprojects/ohphs_covid_impact"
+
+bls <- readxl::read_xlsx(paste0(root,"/data/","bls_employment_benchmarking_data.xlsx"), sheet = "data")
+
+odjfs <- haven::read_sas(paste0(root,"/data/","ohphs_empl_all_mth.sas7bdat")) %>%
+          mutate(annual_growth = num_employed/lag(num_employed, n = 12L) - 1)
+
+```
+
+```{r clean-1}
+
+# transposing bls data
+bls_t <- bls %>%
+            tidyr::pivot_longer(cols = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"), names_to = "month", values_to = "num_employed") %>%
+              janitor::clean_names() %>%
+              dplyr::mutate(month = base::match(month, base::month.abb),
+                            num_employed = num_employed*1000, 
+                            annual_growth = num_employed/lag(num_employed, n = 12L) - 1,
+                            date = as.Date(paste0(year, "-",month,"-01")) )
+lubridate::day(bls_t$date) <- lubridate::days_in_month(bls_t$date)  
+
+```
+
+
+```{r merge}
+df <- odjfs %>%
+        dplyr::inner_join(y = bls_t, by = "date") %>%
+        select(-c("year", "month")) %>%
+        filter(year(date) > 2007)
+
+df_t <- df %>%
+          dplyr::select(c(date, annual_growth.x, annual_growth.y)) %>%
+          dplyr::rename(ODJFS = annual_growth.x, BLS = annual_growth.y) %>%
+          tidyr::pivot_longer(cols = c("ODJFS","BLS"), names_to = "source", values_to = "growth")
+
+```
+
+
+# Purpose
+
+This analysis is a companion to the original paper "COVID-19 Impact on jobs in Ohio's Healthcare Sector" [@rawat]. The original paper analyzes job creation, destruction, reallocation and net employment rates for each subsector that falls under healthcare. These rates gauge the overall employment patterns emerging within Ohio. The results, of course, are reliant on the underlying data used to calculate such rates. So, the validity of data was deemed important during this research study. To assess the quality of data used in the aforementioned paper, Ohio Department of Job and Family Services (ODJFS) payroll data was benchmarked against Bureau of Labor Statistics (BLS) employment data for healthcare sector. This comparison was performed at an aggregate level due to unavailability of breakdown of BLS employment data. Since the original paper assessed growth rates, benchmark analysis was also performed in growth terms.
+
+# Methodology
+
+**ODJFS data**
+
+`r params$data_provider` (`r params$data_provider_abbr`) provided detailed unit-level data to University of Cincinnati. For more details, see the original paper [@rawat]. This data was aggregated at a monthly level before comparison. The data was not seasonally adjusted.
+
+**BLS data**
+
+Bureau of Labor Statistics (BLS) publishes series SMS39000006562000001 titled "Employed and Office of Employment and Unemployment Statistics : Education and Health Services - Health Care and Social Assistance" as part of their Current Employment Statistics (CES) program. This data was seasonally adjusted by BLS. This may result in some discrepancies when analyzing the benchmarking results.
+
+
+**Method**
+
+The author merged the aggregate datasets coming from two data sources and performed a simple comparison of annual growth rates at monthly and yearly level. The rationale behind this was to identify any significant "jumps" or differences between the two data sources. If any differences were deemed significant enough, the author would then further evaluate the reasons behind the differences. Key thing to note is that we are not concerned with any differences in raw employment numbers i.e. there may be certain inclusions/exclusions that potentially result in specific individuals being added/omitted and this could cause differences between the two data sources in level terms. Nevertheless, as long as the growth rates represent the underlying data, the results from the analysis can be deemed useful to corroborate the quality of data used by the original paper. Furthermore, since the paper evaluates the impact of COVID-19 on jobs in Ohio's healthcare sector, we are more interested in data from 2019 onwards as it is more informative of the employment levels for time periods right before and after the COVID-19 shock. 
+
+Next section will provide the results of this benchmarking analysis.
+
+# Results
+
+```{r line-plot, fig.cap="Results: Benchmarking Plot", out.width="100%"}
+# Rbearcat::bcat_plt_line(df = df_t,
+#                      x = date,
+#                      y = growth,
+#                      color = source, 
+#                      y_lab = "annual growth",
+#                      title = "Healthcare Sector in Ohio: Employment growth",
+#                      subtitle = "Benchmarking: ODJFS unit-level data vs BLS aggregate data",
+#                      y_scale =scale_y_continuous(labels = percent_format()) )
+
+ggplot(data = df_t) +
+  geom_line(aes(x = date, y = growth, color = source)) +
+  ylab("annual growth") +
+  labs(title = "Healthcare Sector in Ohio: Employment growth", 
+       subtitle = "Benchmarking: ODJFS unit-level data vs BLS aggregate data") +
+  scale_y_continuous(labels = scales::percent) + theme(panel.background = element_rect(fill = "gray98",
+    size = 1), plot.background = element_rect(fill = "gray98",
+    colour = NA, size = 0.6, linetype = "solid"),
+    legend.key = element_rect(fill = "gray98"),
+    legend.background = element_rect(fill = "gray98"),
+    legend.position = "bottom", legend.direction = "horizontal")
+
+```
+
+Figure \@ref(fig:line-plot) shows the results from benchmarking analysis at monthly level. The red line represents annual growth in employment from BLS data and blue line represents annual growth in employment from ODJFS data. As we can see, the two growth rates are closely aligned, especially during the COVID period. As mentioned before, BLS data (red line) was seasonally adjusted whereas ODJFS (blue line) was not seasonally adjusted.
+
+
+```{r COVID-period-table}
+df_t %>%
+  tidyr::pivot_wider(id_cols = date, names_from = source, values_from = growth) %>%
+  mutate(year = lubridate::year(date))  %>%
+  group_by(year) %>%
+  summarise(ODJFS = mean(ODJFS), BLS = mean(BLS)) %>%
+  mutate(`difference (in pp)` = ODJFS*100-BLS*100) %>%
+  mutate(ODJFS = scales::percent(ODJFS, accuracy = 0.01), 
+         BLS = scales::percent(BLS, accuracy = 0.01),
+         `difference (in pp)` = scales::comma(`difference (in pp)`, accuracy = 0.01)) %>%
+  Rbearcat::bcat_fmt_style_table(caption="Results: Average annual employment growth per year of Ohio's Healthcare sector",
+                                 align = c("c","c","c","c"))
+```
+
+Table \@ref(tab:COVID-period-table) shows results from benchmarking analysis at yearly level. The monthly annual growth rates shown in Figure \@ref(fig:line-plot) were aggregated to yearly level for succinctness. ODJFS column represents average annual growth rate from 2008 to 2021. Similarly, BLS column represents average annual growth rate from 2008 to 2021. Difference column is the simple difference between ODJFS and BLS columns, measured in percentage point (pp) terms. Since the differences between the two columns were negligible, the author deemed ODJFS data to be appropriate for the original paper.
+
+# Technical Notes
+
+This document was written in R Markdown, using the `rmarkdown` and `knitr` [@xie-markdown] packages. It uses the following packages: Rbearcat, tidyverse, lubridate, haven, stringr, here, knitr, janitor, scales, viridis, RColorBrewer, kableExtra, flextable.
+
+
+# References
+
+

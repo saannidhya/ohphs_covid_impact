@@ -3,6 +3,11 @@
 |Purpose   : Exploratory Data Analysis
 |History   : Date 		By Description
 			 7 May 22   SR Plot Ohio Public Health Sector Employment: Aggregated and breakout
+			 7 Jul 22   SR Added some comments
+|Inputs	   : out.ohphs_empl_all_mth, out.ohphs_empl_by_subcat_mth, out.non_ohphs_empl_all_mth, out.ohphs_empl_by_county_mth, 
+			 out.ohphs_job_vars_621_qtr, out.ohphs_job_vars_622_qtr, out.ohphs_job_vars_623_qtr, out.ohphs_job_vars_624_qtr, 
+			 out.ohphs_job_vars_621_mth, out.ohphs_job_vars_622_mth, out.ohphs_job_vars_623_mth, out.ohphs_job_vars_624_mth
+|Outputs   : out.ohphs_job_rates_all_mth, out.ohphs_job_rates_by_cat
 \*=================================================================================================*/
 
 %include "C:\Users\rawatsa\OneDrive - University of Cincinnati\sas_utility_functions\util_load_macro_functions.sas";
