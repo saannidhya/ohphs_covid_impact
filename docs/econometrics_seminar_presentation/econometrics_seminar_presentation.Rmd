@@ -1,0 +1,170 @@
+---
+title: "Impact of COVID-19 on jobs in Ohio's Healthcare Sector"
+author: "Saani Rawat"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output:
+  Rbearcat::bcat_beamer: default
+biblio-style: apalike
+institute: University of Cincinnati
+link-citations: yes
+bibliography: references.bib
+aspectratio: 169
+classoption: t, table
+mainfont: Arial
+fontsize: 11pt
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# set working directory
+root <- "C:/Users/rawatsa/OneDrive - University of Cincinnati/SASprojects/ohphs_covid_impact/docs/econometrics_seminar_presentation"
+
+# load packages
+library(Rbearcat)
+library(tidyverse)
+library(lubridate)
+library(haven)
+library(stringr)
+library(here)
+library(knitr)
+library(janitor)
+library(scales)
+library(viridis)
+library(RColorBrewer)
+library(kableExtra)
+library(flextable)
+# include additional packages here (if needed)
+# library(DT)
+# library(ggrepel)
+
+# set default Rmd options
+Rbearcat::bcat_setup_rmd()
+
+# set default UC geoms
+Rbearcat::set_UC_geoms()
+
+# output type
+doc_type <- knitr::opts_knit$get('rmarkdown.pandoc.to')
+
+# import tables
+tbls <- Rbearcat::bcat_import_data(location = glue::glue("{root}/tables"),
+                                   extension = "csv",
+                                   import_function = readr::read_csv,
+                                   recursive = TRUE)
+
+```
+
+# Summary
+
+-   Background & Research Idea
+-   Data
+-   Method
+-   Results
+
+**Contribution**: Purely empirical. Evidence for decline in jobs in Ohio's healthcare sector.
+
+JEL codes: I11, I18, J21 ^[I11: Analysis of Health Care Markets, I18: Government Policy, Regulation & Public Health, J21: Labor Force and Employment, Size, and Structure]
+
+# Background & Research Idea
+
+-   Studies have measured the economic impact of COVID-19 crisis [@Adams-Prassl2020-ya]
+
+-   Previous studies show U.S healthcare sector behaves differently from U.S non-healthcare sectors [@ushealthimpact]
+
+-   At 14%, Ohio has one of the highest workforce employment rate in Healthcare sector [@healthpct] \
+
+**Main question**: How did COVID-19 change labor market dynamics for Ohio's Healthcare sector?\
+
+# Healthcare vs Non-Healthcare: History
+
+```{r line-plot, fig.cap="Healthcare vs Non-Healthcare in Ohio", out.width="70%"}
+
+knitr::include_graphics(glue::glue("{root}/figures/ohphs_vs_nonohphs_yoy_growth3.png"))
+
+```
+
+# Data
+
+**Source**: Ohio Department of Job and Family Services (ODJFS) collects employment data as per Ohio Revised Code (ORC) 4141.13 (G) (see @ui)
+
+**Period**: January 2006 to June 2021
+
+**Variables**:
+
+1.  Unique Location Identifier (a.k.a unit): A particular location or address related to Healthcare sector
+
+2.  NAICS code: used to code industries as per @naicspdf. Code `r 62` corresponds to Healthcare sector. Within Healthcare sector, we have -
+
+    1.  621: Ambulatory Healthcare
+
+    2.  622: Hospitals
+
+    3.  623: Nursing and Residential Care
+
+    4.  624: Social Assistance
+
+3.  Number of Employed persons: number of individuals that were reported to ODJFS by a unit and were part of its payroll
+
+# Methodology
+
+Let $E_{it}$ be defined as the number of people on $i^{th}$ company's payroll during $t^{th}$ time period, where $i \in \{1, 2, .... , N \}$ for some $N \in \mathbb{N}$ and $t \in \{1,2, ...., T\}$ for some $T \in \mathbb{N}$
+
+Let monthly job creation be $JC_t = \frac{1}{N} \sum_{i=1}^{N} JC_{it}$, where
+
+$$
+JC_{it}=\begin{cases} E_{it} - E_{it-1}  &\text{, if } E_{it} - E_{it-1} \ge 0 ,\\ 0 &\text{, if } E_{it} - E_{it-1} < 0 \end{cases}
+$$
+
+Let monthly job destruction be $JD_t = \frac{1}{N} \sum_{i=1}^{N} JD_{it}$, where
+
+$$
+JD_{it}=\begin{cases} 0  &\text{, if } E_{it} - E_{it-1} \ge 0 ,\\ -(E_{it} - E_{it-1}) &\text{, if } E_{it} - E_{it-1} < 0 \end{cases}
+$$
+
+# Methodology
+
+Let annual Job creation rate be $JCR_t = \frac{JC_t}{\sum_{i=1}^{N} E_{it}} - \frac{JC_{t-12}}{\sum_{i=1}^{N} E_{it-12}}$
+
+Let annual Job destruction rate be $JDR_t = \frac{JD_t}{\sum_{i=1}^{N} E_{it}} - \frac{JD_{t-12}}{\sum_{i=1}^{N} E_{it-12}}$
+
+Let Reallocation rate be $RR_t = JCR_t + JDR_t$
+
+Let Net Employment rate be $NER_t = JCR_t - JDR_t$
+
+Further, let $\widetilde{T}$ be the period when lockdown was announced in Ohio
+
+Let average Job-creation rate before and after COVID be $\overline{JCR_{0}}$ and $\overline{JCR_{1}}$, where
+
+$\overline{JCR_{0}} = \frac{\sum_{t=1}^{\widetilde{T} - 1} JCR_{t}}{\widetilde{T} - 1}$ and $\overline{JCR_{1}} = \frac{\sum_{t=\widetilde{T}}^{T} JCR_{t}}{T- \widetilde{T}+1}$
+
+# Methodology
+
+Similarly, Let average Job-destruction rate before and after COVID be $\overline{JDR_{0}}$ and $\overline{JDR_{1}}$, where
+
+$\overline{JDR_{0}} = \frac{\sum_{t=1}^{\widetilde{T} - 1} JDR_{t}}{\widetilde{T} - 1}$ and $\overline{JDR_{1}} = \frac{\sum_{t=\widetilde{T}}^{T} JDR_{t}}{T- \widetilde{T}}$
+
+Then, our job loss measure (JL) is defined as
+
+$JL = (\overline{JDR_{1}} - \overline{JDR_{0}}) - (\overline{JCR_{1}} - \overline{JCR_{0}})$
+
+# Results
+
+```{r results-plot, fig.cap="Ohio Healthcare sector: Jobs generated per NAICS category", fig.height=3, fig.width=4}
+knitr::include_graphics(glue::glue("{root}/figures/ts_ohphs_empl_by_subcat_mth.png"))
+```
+
+# Results
+
+```{r results-table}
+
+Rbearcat::bcat_fmt_style_table(tbls$results, 
+                               caption = "Measure of Job Loss (per sub-sector)",
+                               footer = "Job Creation & Destruction Flows as a percentage of total employment", 
+                               scale_down = TRUE)
+
+```
+
+# Technical Notes
+
+-   This document was written in R Markdown, using the `rmarkdown` [@xie-markdown] and `knitr` [@xie-knitr] packages.
+
+# References

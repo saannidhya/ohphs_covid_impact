@@ -1,0 +1,16 @@
+Category,Period,Job Creation,Job Destruction,Job Reallocation,Net Employment,Measure
+Ambulatory Healthcare,Pre-COVID,3.26%,3.11%,6.38%,0.15%,
+Ambulatory Healthcare,Post-COVID,3.88%,4.15%,8.02%,-0.27%,
+,,0.61,1.04,,,0.42
+Hospitals,Pre-COVID,1.09%,1.01%,2.11%,0.08%,
+Hospitals,Post-COVID,1.13%,1.19%,2.33%,-0.06%,
+,,0.04,0.18,,,0.14
+Nursing and Residential Care,Pre-COVID,2.53%,2.52%,5.05%,0.01%,
+Nursing and Residential Care,Post-COVID,2.84%,3.68%,6.52%,-0.83%,
+,,0.31,1.15,,,0.84
+Social Assistance,Pre-COVID,3.45%,3.17%,6.62%,0.28%,
+Social Assistance,Post-COVID,4.19%,4.84%,9.03%,-0.64%,
+,,0.74,1.67,,,0.93
+Healthcare Sector,Pre-COVID,2.39%,2.27%,4.66%,0.12%,
+Healthcare Sector,Post-COVID,2.77%,3.10%,5.87%,-0.33%,
+,,0.39,0.83,,,0.44
